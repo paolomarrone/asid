@@ -1,4 +1,6 @@
 #!/bin/sh
 
-dir=`dirname $0`
-rm -fr $dir/vst3 $dir/lv2
+set -eu
+
+dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+rm -fr -- "$dir/api" "$dir/vst3" "$dir/lv2" "$dir/perone"

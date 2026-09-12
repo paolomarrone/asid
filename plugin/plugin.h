@@ -19,89 +19,82 @@
  */
 
 #include "asid.h"
+#include <limits.h>
+#include <string.h>
 
 typedef struct plugin {
 	asid	instance;
+	char	bypass;
+	float	mod_cutoff;
 } plugin;
 
-static void plugin_init(plugin *instance) {
+static int plugin_init(plugin *instance, const plugin_callbacks *cbs) {
+	(void)cbs;
 	instance->instance = asid_new();
+	instance->bypass = 0;
+	instance->mod_cutoff = 0.f;
+	return instance->instance == NULL ? -1 : 0;
 }
 
 static void plugin_fini(plugin *instance) {
-	(void)instance;
+	asid_free(instance->instance);
 }
 
 static void plugin_set_sample_rate(plugin *instance, float sample_rate) {
-	instance->sample_rate = sample_rate;
-	//safe approx instance->delay_line_length = ceilf(sample_rate) + 1;
-	instance->delay_line_length = (size_t)(sample_rate + 1.f) + 1;
+	asid_set_sample_rate(instance->instance, sample_rate);
 }
 
 static size_t plugin_mem_req(plugin *instance) {
-	return instance->delay_line_length * sizeof(float);
+	(void)instance;
+	return 0;
 }
 
 static void plugin_mem_set(plugin *instance, void *mem) {
-	instance->delay_line = (float *)mem;
+	(void)instance;
+	(void)mem;
 }
 
 static void plugin_reset(plugin *instance) {
-	for (size_t i = 0; i < instance->delay_line_length; i++)
-		instance->delay_line[i] = 0.f;
-	instance->delay_line_cur = 0;
-	instance->z1 = 0.f;
-	instance->cutoff_k = 1.f;
-	instance->yz1 = 0.f;
+	asid_reset(instance->instance);
+	instance->mod_cutoff = 0.f;
 }
 
 static void plugin_set_parameter(plugin *instance, size_t index, float value) {
 	switch (index) {
-	case 0:
-		//approx instance->gain = powf(10.f, 0.05f * value);
-		instance->gain = ((2.6039890429412597e-4f * value + 0.032131027163547855f) * value + 1.f) / ((0.0012705124328080768f * value - 0.0666763481312185f) * value + 1.f);
+	case plugin_parameter_cutoff:
+		asid_set_parameter(instance->instance, 0, 0.01f * value);
 		break;
-	case 1:
-		instance->delay = 0.001f * value;
+	case plugin_parameter_lfo_amount:
+		asid_set_parameter(instance->instance, 1, 0.01f * value);
 		break;
-	case 2:
-		instance->cutoff = value;
+	case plugin_parameter_lfo_speed:
+		asid_set_parameter(instance->instance, 2, 0.01f * value);
 		break;
-	case 3:
+	case plugin_parameter_bypass:
 		instance->bypass = value >= 0.5f;
 		break;
 	}
 }
 
 static float plugin_get_parameter(plugin *instance, size_t index) {
-	(void)index;
-	return instance->yz1;
-}
-
-static size_t calc_index(size_t cur, size_t delay, size_t len) {
-	return (cur < delay ? cur + len : cur) - delay;
+	return index == plugin_parameter_mod_cutoff ? instance->mod_cutoff : 0.f;
 }
 
 static void plugin_process(plugin *instance, const float **inputs, float **outputs, size_t n_samples) {
-	//approx size_t delay = roundf(instance->sample_rate * instance->delay);
-	size_t delay = (size_t)(instance->sample_rate * instance->delay + 0.5f);
-	const float mA1 = instance->sample_rate / (instance->sample_rate + 6.283185307179586f * instance->cutoff * instance->cutoff_k);
-	for (size_t i = 0; i < n_samples; i++) {
-		instance->delay_line[instance->delay_line_cur] = inputs[0][i];
-		const float x = instance->delay_line[calc_index(instance->delay_line_cur, delay, instance->delay_line_length)];
-		instance->delay_line_cur++;
-		if (instance->delay_line_cur == instance->delay_line_length)
-			instance->delay_line_cur = 0;
-		const float y = x + mA1 * (instance->z1 - x);
-		instance->z1 = y;
-		outputs[0][i] = instance->bypass ? inputs[0][i] : instance->gain * y;
-		instance->yz1 = outputs[0][i];
+	if (n_samples == 0)
+		return;
+	if (instance->bypass) {
+		memmove(outputs[0], inputs[0], n_samples * sizeof(float));
+		return;
 	}
-}
 
-static void plugin_midi_msg_in(plugin *instance, size_t index, const uint8_t * data) {
-	(void)index;
-	if (((data[0] & 0xf0) == 0x90) && (data[2] != 0))
-		//approx instance->cutoff_k = powf(2.f, (1.f / 12.f) * (note - 60));
-		instance->cutoff_k = data[1] < 64 ? (-0.19558034980097166f * data[1] - 2.361735109225749f) / (data[1] - 75.57552349522389f) : (393.95397927344214f - 7.660826245588588f * data[1]) / (data[1] - 139.0755234952239f);
+	for (size_t offset = 0; offset < n_samples;) {
+		const size_t left = n_samples - offset;
+		const int n = left > INT_MAX ? INT_MAX : (int)left;
+		const float *x[] = { inputs[0] + offset };
+		float *y[] = { outputs[0] + offset };
+		asid_process(instance->instance, x, y, n);
+		offset += (size_t)n;
+	}
+	instance->mod_cutoff = 100.f * asid_get_parameter(instance->instance, 3);
 }

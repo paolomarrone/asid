@@ -10,19 +10,22 @@
 				"direction": "input",
 				"channels": "mono",
 				"name": "Input",
-				"shortName": "Input"
+				"shortName": "Input",
+				"id": "input"
 			},
 			{
 				"type": "audio",
 				"direction": "output",
 				"channels": "mono",
 				"name": "Output",
-				"shortName": "Output"
+				"shortName": "Output",
+				"id": "output"
 			}
 		],
 		"parameters": [
 			{
 				"name": "Cutoff",
+				"id": "cutoff",
 				"shortName": "Cutoff",
 				"direction": "input",
 				"defaultValue": 100.0,
@@ -33,6 +36,7 @@
 			},
 			{
 				"name": "LFO Amount",
+				"id": "lfo_amount",
 				"shortName": "LFO Amount",
 				"direction": "input",
 				"defaultValue": 0.0,
@@ -43,6 +47,7 @@
 			},
 			{
 				"name": "LFO Speed",
+				"id": "lfo_speed",
 				"shortName": "LFO Speed",
 				"direction": "input",
 				"defaultValue": 0.0,
@@ -53,6 +58,7 @@
 			},
 			{
 				"name": "Bypass",
+				"id": "bypass",
 				"shortName": "Bypass",
 				"direction": "input",
 				"isBypass": true,
@@ -72,6 +78,7 @@
 			},
 			{
 				"name": "Modulated Cutoff",
+				"id": "mod_cutoff",
 				"shortName": "Mod Cutoff",
 				"direction": "output",
 				"defaultValue": 0.0,

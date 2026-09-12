@@ -1,10 +1,16 @@
 #!/bin/sh
 
-TIBIA_DIR=../../tibia
-dir=`dirname $0`
+set -eu
 
-$TIBIA_DIR/tibia $dir/tibia/product.json,$dir/tibia/company.json,$dir/tibia/vst3.json $TIBIA_DIR/templates/vst3 vst3
-$TIBIA_DIR/tibia $dir/tibia/product.json,$dir/tibia/company.json,$dir/tibia/vst3.json,$dir/tibia/make.json,$dir/tibia/vst3-make.json $TIBIA_DIR/templates/vst3-make vst3
+dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+TIBIA_DIR=${TIBIA_DIR:-"$dir/../../tibia"}
+data="$dir/tibia/product.json,$dir/tibia/company.json"
 
-$TIBIA_DIR/tibia $dir/tibia/product.json,$dir/tibia/company.json,$dir/tibia/lv2.json $TIBIA_DIR/templates/lv2 lv2
-$TIBIA_DIR/tibia $dir/tibia/product.json,$dir/tibia/company.json,$dir/tibia/lv2.json,$dir/tibia/make.json,$dir/tibia/lv2-make.json $TIBIA_DIR/templates/lv2-make lv2
+"$TIBIA_DIR/tibia" "$data" "$TIBIA_DIR/templates/api" "$dir/api"
+for format in vst3 lv2; do
+	"$TIBIA_DIR/tibia" "$data,$dir/tibia/$format.json" "$TIBIA_DIR/templates/$format" "$dir/$format"
+	"$TIBIA_DIR/tibia" "$data,$dir/tibia/$format.json,$dir/tibia/make.json,$dir/tibia/$format-make.json" "$TIBIA_DIR/templates/$format-make" "$dir/$format"
+done
+
+"$TIBIA_DIR/tibia" "$data" "$TIBIA_DIR/templates/perone" "$dir/perone"
+"$TIBIA_DIR/tibia" "$data,$dir/tibia/make.json,$dir/tibia/perone-make.json" "$TIBIA_DIR/templates/perone-make" "$dir/perone"

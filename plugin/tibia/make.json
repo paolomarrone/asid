@@ -1,5 +1,7 @@
 {
 	"make": {
-		"pluginDir": ".."
+		"pluginDir": "..",
+		"apiDir": "../api",
+		"mkincDir": ".."
 	}
 }
